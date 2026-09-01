@@ -1,0 +1,588 @@
+
+    <!DOCTYPE html>
+    <html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Мои флеш-карточки 🎓</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+            :root {
+                --bg: #131316;
+                --card-bg: #26262b;
+                --text-primary: #f2f2f4;
+                --text-secondary: #9a9aa2;
+                --accent-blue: #4d9dff;
+                --accent-red: #ff5a52;
+                --accent-green: #34d566;
+                --divider: #3a3a40;
+            }
+
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                background: var(--bg);
+                min-height: 100vh;
+                color: var(--text-primary);
+            }
+
+            .app {
+                max-width: 640px;
+                margin: 0 auto;
+                padding: 14px 16px 24px;
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .top-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+
+            .icon-btn {
+                background: none; border: none; color: var(--text-primary);
+                font-size: 24px; width: 40px; height: 40px;
+                display: flex; align-items: center; justify-content: center;
+                cursor: pointer; border-radius: 50%; flex-shrink: 0; padding: 0;
+            }
+
+            .icon-btn:active { background: rgba(255,255,255,0.08); }
+
+            .top-title {
+                flex: 1; text-align: center; font-size: 18px; font-weight: 700;
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 6px;
+            }
+
+            .icon-spacer { width: 40px; flex-shrink: 0; }
+
+            .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; display: none; }
+            .sidebar-overlay.open { display: block; }
+
+            .sidebar {
+                position: fixed; top: 0; left: 0; bottom: 0; width: 300px; max-width: 86vw;
+                background: #1c1c20; z-index: 101; transform: translateX(-100%);
+                transition: transform 0.25s ease-out; overflow-y: auto;
+                box-shadow: 4px 0 24px rgba(0,0,0,0.5);
+            }
+
+            .sidebar.open { transform: translateX(0); }
+
+            .sidebar-header {
+                padding: 20px 16px; font-size: 16px; font-weight: 700;
+                display: flex; justify-content: space-between; align-items: center;
+                border-bottom: 1px solid var(--divider); position: sticky; top: 0;
+                background: #1c1c20; z-index: 2;
+            }
+
+            .sidebar-close {
+                background: rgba(255,255,255,0.08); border: none; color: var(--text-primary);
+                width: 30px; height: 30px; border-radius: 8px; font-size: 16px; cursor: pointer;
+            }
+
+            /* ── Группы (папки) ── */
+            .group-header {
+                display: flex; align-items: center; gap: 8px;
+                padding: 14px 16px; cursor: pointer;
+                background: #202024; border-bottom: 1px solid var(--divider);
+                font-weight: 700; font-size: 14px;
+            }
+
+            .group-header:active { background: #26262c; }
+
+            .group-toggle-icon { color: var(--text-secondary); font-size: 11px; width: 12px; }
+
+            .group-count { color: var(--text-secondary); font-weight: 400; font-size: 12px; margin-left: auto; }
+
+            .group-decks { display: none; }
+            .group-decks.expanded { display: block; }
+
+            .deck-item {
+                display: flex; align-items: center; gap: 12px;
+                padding: 12px 16px 12px 28px; cursor: pointer;
+                border-bottom: 1px solid #232328;
+            }
+
+            .deck-item:active, .deck-item.active { background: #232329; }
+            .deck-item.active { border-left: 3px solid var(--accent-blue); padding-left: 25px; }
+
+            .deck-thumb { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; flex-shrink: 0; background: #333; }
+            .deck-thumb-placeholder {
+                width: 44px; height: 44px; border-radius: 10px; background: #34343c;
+                display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0;
+            }
+
+            .deck-info { flex: 1; min-width: 0; }
+
+            .deck-name-row { display: flex; align-items: center; gap: 6px; }
+
+            .deck-name {
+                font-size: 13.5px; font-weight: 600; color: var(--text-primary);
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0;
+            }
+
+            .deck-rename-btn {
+                background: none; border: none; color: var(--text-secondary);
+                font-size: 13px; padding: 4px 6px; cursor: pointer; flex-shrink: 0; border-radius: 6px;
+            }
+
+            .deck-rename-btn:active { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+
+            .deck-count { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+            .deck-progress-bar {
+                display: flex; height: 5px; border-radius: 3px; overflow: hidden;
+                background: #38383e; margin-top: 6px;
+            }
+
+            .deck-progress-bar .seg.correct { background: var(--accent-green); }
+            .deck-progress-bar .seg.incorrect { background: var(--accent-red); }
+            .deck-progress-bar .seg.remaining { background: transparent; }
+
+            /* ── Карточка ── */
+            .card {
+                background: var(--card-bg); border-radius: 28px; padding: 22px 22px 8px;
+                flex: 1; display: flex; flex-direction: column; min-height: 400px;
+                animation: fadeIn 0.35s ease-out;
+            }
+
+            @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+            .card-top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+            .card-counter { font-size: 14px; color: var(--text-secondary); font-weight: 500; }
+            .card-menu-dots { color: var(--text-secondary); font-size: 20px; padding: 4px 8px; }
+
+            .card-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 20px 0; }
+
+            .question-text { font-size: 30px; font-weight: 500; line-height: 1.28; color: var(--text-primary); }
+
+            .image-wrap { text-align: center; margin: 18px 0 6px; }
+            .image-wrap img { max-width: 100%; max-height: 220px; border-radius: 16px; }
+
+            .answer-block {
+                margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--divider);
+                max-height: 0; overflow: hidden; opacity: 0; transition: all 0.3s ease;
+            }
+
+            .answer-block.show { max-height: 400px; opacity: 1; }
+
+            .answer-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 8px; }
+            .answer-text { font-size: 22px; font-weight: 400; color: var(--text-primary); line-height: 1.4; }
+
+            .reveal-link { text-align: center; color: var(--text-secondary); font-size: 16px; padding: 16px 0 14px; cursor: pointer; user-select: none; }
+            .reveal-link:active { opacity: 0.6; }
+
+            .nav-row { display: flex; justify-content: center; align-items: center; gap: 18px; margin-top: 20px; }
+
+            .nav-circle {
+                background: #1c1c20; border: 1.5px solid var(--divider); color: var(--accent-blue);
+                width: 60px; height: 60px; border-radius: 50%;
+                display: flex; align-items: center; justify-content: center;
+                font-size: 22px; cursor: pointer; flex-shrink: 0;
+            }
+
+            .nav-circle:active { background: #29292f; }
+
+            .nav-circle.nav-wrong {
+                width: auto; min-width: 68px; padding: 0 16px; border-radius: 30px;
+                gap: 6px; color: var(--accent-red); font-size: 18px; font-weight: 600;
+            }
+
+            .nav-circle.nav-right {
+                width: auto; min-width: 68px; padding: 0 16px; border-radius: 30px;
+                gap: 6px; color: var(--accent-green); font-size: 18px; font-weight: 600;
+            }
+
+            .progress-bar { width: 100%; height: 3px; background: #2a2a30; border-radius: 2px; margin-top: 22px; }
+            .progress-fill { height: 100%; background: var(--accent-blue); border-radius: 2px; transition: width 0.3s ease; }
+
+            .keyboard-hint { text-align: center; color: #55555c; font-size: 11px; margin-top: 14px; }
+
+            .results-title { text-align: center; font-size: 20px; color: var(--text-primary); margin-bottom: 22px; font-weight: 700; }
+            .results-summary { display: flex; justify-content: center; gap: 34px; margin-bottom: 28px; }
+            .results-stat { text-align: center; }
+            .results-stat-number { font-size: 34px; font-weight: 700; }
+            .results-stat-label { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+            .results-stat.correct .results-stat-number { color: var(--accent-green); }
+            .results-stat.incorrect .results-stat-number { color: var(--accent-red); }
+
+            .chart-bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+            .chart-bar-label { width: 80px; font-size: 13px; color: var(--text-secondary); text-align: right; flex-shrink: 0; }
+            .chart-bar-track { flex: 1; background: #2a2a30; border-radius: 10px; height: 24px; overflow: hidden; }
+            .chart-bar-fill {
+                height: 100%; border-radius: 10px; display: flex; align-items: center;
+                justify-content: flex-end; padding-right: 10px; color: #0c0c0e;
+                font-size: 12px; font-weight: 700; transition: width 0.6s ease; min-width: 28px;
+            }
+            .chart-bar-fill.correct { background: var(--accent-green); }
+            .chart-bar-fill.incorrect { background: var(--accent-red); }
+
+            .results-list { margin-top: 18px; max-height: 200px; overflow-y: auto; border-top: 1px solid var(--divider); padding-top: 10px; }
+            .results-list-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; color: var(--text-secondary); border-bottom: 1px solid #2a2a30; }
+
+            .reset-btn {
+                display: block; margin: 20px auto 0; background: var(--accent-blue); color: #0c0c0e;
+                border: none; padding: 12px 28px; border-radius: 24px; font-size: 15px; font-weight: 700; cursor: pointer;
+            }
+
+            .empty-state { text-align: center; color: var(--text-secondary); padding: 60px 20px; font-size: 15px; }
+
+            @media (max-width: 420px) {
+                .card { padding: 18px 16px 6px; min-height: 340px; }
+                .question-text { font-size: 24px; }
+                .answer-text { font-size: 18px; }
+                .nav-row { gap: 10px; }
+                .nav-circle { width: 52px; height: 52px; font-size: 19px; }
+                .nav-circle.nav-wrong, .nav-circle.nav-right { min-width: 58px; padding: 0 12px; font-size: 16px; }
+            }
+        </style>
+    </head>
+    <body>
+        <script src="data/Общее.js"></script>
+
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <span>📚 Мои колоды</span>
+                <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+            </div>
+            <div id="deckList"></div>
+        </div>
+
+        <div class="app">
+            <div class="top-bar">
+                <button class="icon-btn" onclick="openSidebar()">☰</button>
+                <div class="top-title" id="deckTitleBar"></div>
+                <div class="icon-spacer"></div>
+            </div>
+
+            <div class="card" id="flashcard"></div>
+            <div class="nav-row" id="navRow"></div>
+            <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+            <div class="keyboard-hint" id="hint">⌨️ Стрелки — навигация · SPACE — ответ · Y/N — оценка</div>
+        </div>
+
+        <script>
+            const ALL_DECKS = window.ALL_DECKS || {};
+            const groupNames = Object.keys(ALL_DECKS);
+
+            let currentGroupName = null;
+            let currentDeckName = null;
+            let currentCard = 0;
+            let answerShown = false;
+            let deckResults = {};
+            let expandedGroups = new Set();
+
+            function deckKey(group, deck) { return group + '::' + deck; }
+
+            function getResults() {
+                return deckResults[deckKey(currentGroupName, currentDeckName)];
+            }
+
+            function isRTL(text) {
+                const rtlChars = /[\u0591-\u07FF\uFB1D-\uFDFD\uFE70-\uFEFC]/;
+                return rtlChars.test(text);
+            }
+
+            function currentDeck() {
+                return ALL_DECKS[currentGroupName][currentDeckName];
+            }
+
+            const DECK_NAMES_STORAGE_KEY = 'flashcard_deck_display_names_v2';
+
+            function loadDeckDisplayNames() {
+                try {
+                    const raw = localStorage.getItem(DECK_NAMES_STORAGE_KEY);
+                    return raw ? JSON.parse(raw) : {};
+                } catch (e) { return {}; }
+            }
+
+            function saveDeckDisplayNames(obj) {
+                try { localStorage.setItem(DECK_NAMES_STORAGE_KEY, JSON.stringify(obj)); } catch (e) {}
+            }
+
+            let deckDisplayNames = loadDeckDisplayNames();
+
+            function getDisplayName(key) { return deckDisplayNames[key] || key.split('::')[1]; }
+
+            function startRenameDeck(group, deck) {
+                const key = deckKey(group, deck);
+                const current = getDisplayName(key);
+                const newName = prompt('Новое название колоды:', current);
+                if (newName && newName.trim() && newName.trim() !== current) {
+                    deckDisplayNames[key] = newName.trim();
+                    saveDeckDisplayNames(deckDisplayNames);
+                    renderSidebar();
+                    if (currentGroupName === group && currentDeckName === deck) renderCard();
+                }
+            }
+
+            function toggleGroup(group) {
+                if (expandedGroups.has(group)) expandedGroups.delete(group);
+                else expandedGroups.add(group);
+                renderSidebar();
+            }
+
+            function renderSidebar() {
+                const listEl = document.getElementById('deckList');
+
+                if (groupNames.length === 0) {
+                    listEl.innerHTML = '<div class="empty-state">Колоды не найдены</div>';
+                    return;
+                }
+
+                listEl.innerHTML = groupNames.map(group => {
+                    const decks = ALL_DECKS[group];
+                    const deckNamesInGroup = Object.keys(decks);
+                    const isExpanded = expandedGroups.has(group);
+
+                    const decksHtml = deckNamesInGroup.map(deck => {
+                        const cards = decks[deck];
+                        const key = deckKey(group, deck);
+                        const firstImg = cards.find(c => c.image);
+                        const thumb = firstImg
+                            ? `<img class="deck-thumb" src="${firstImg.image}" alt="">`
+                            : `<div class="deck-thumb-placeholder">📖</div>`;
+                        const activeClass = (group === currentGroupName && deck === currentDeckName) ? 'active' : '';
+
+                        const arr = deckResults[key] || new Array(cards.length).fill(null);
+                        const total = cards.length;
+                        const correct = arr.filter(r => r === true).length;
+                        const incorrect = arr.filter(r => r === false).length;
+                        const answered = correct + incorrect;
+                        const remaining = total - answered;
+
+                        let progressText;
+                        if (answered === 0) progressText = `${total} карточек`;
+                        else if (answered === total) progressText = `✅ Пройдено: ${correct}/${total}`;
+                        else progressText = `${answered}/${total} пройдено`;
+
+                        const displayName = getDisplayName(key);
+                        const safeGroup = group.replace(/'/g, "\\'");
+                        const safeDeck = deck.replace(/'/g, "\\'");
+
+                        return `
+                            <div class="deck-item ${activeClass}" onclick="selectDeck('${safeGroup}', '${safeDeck}')">
+                                ${thumb}
+                                <div class="deck-info">
+                                    <div class="deck-name-row">
+                                        <div class="deck-name">${displayName}</div>
+                                        <button class="deck-rename-btn" onclick="event.stopPropagation(); startRenameDeck('${safeGroup}', '${safeDeck}')">✎</button>
+                                    </div>
+                                    <div class="deck-count">${progressText}</div>
+                                    <div class="deck-progress-bar">
+                                        <div class="seg correct" style="flex:${correct} ${correct} 0"></div>
+                                        <div class="seg incorrect" style="flex:${incorrect} ${incorrect} 0"></div>
+                                        <div class="seg remaining" style="flex:${remaining} ${remaining} 0"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    const safeGroupId = group.replace(/[^a-zA-Z0-9]/g, '_');
+
+                    return `
+                        <div class="group-section">
+                            <div class="group-header" onclick="toggleGroup('${group.replace(/'/g, "\\'")}')">
+                                <span class="group-toggle-icon">${isExpanded ? '▾' : '▸'}</span>
+                                <span>📁 ${group}</span>
+                                <span class="group-count">${deckNamesInGroup.length} колод</span>
+                            </div>
+                            <div class="group-decks ${isExpanded ? 'expanded' : ''}" id="group-${safeGroupId}">
+                                ${decksHtml}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            function openSidebar() {
+                document.getElementById('sidebar').classList.add('open');
+                document.getElementById('sidebarOverlay').classList.add('open');
+            }
+
+            function closeSidebar() {
+                document.getElementById('sidebar').classList.remove('open');
+                document.getElementById('sidebarOverlay').classList.remove('open');
+            }
+
+            function selectDeck(group, deck) {
+                currentGroupName = group;
+                currentDeckName = deck;
+                expandedGroups.add(group);
+
+                const key = deckKey(group, deck);
+                if (!deckResults[key]) {
+                    deckResults[key] = new Array(ALL_DECKS[group][deck].length).fill(null);
+                }
+
+                const arr = deckResults[key];
+                const firstUnanswered = arr.findIndex(r => r === null);
+
+                answerShown = false;
+                closeSidebar();
+                renderSidebar();
+
+                if (firstUnanswered === -1 && arr.length > 0) {
+                    currentCard = arr.length - 1;
+                    showResults();
+                } else {
+                    currentCard = firstUnanswered === -1 ? 0 : firstUnanswered;
+                    document.getElementById('hint').style.display = 'block';
+                    renderCard();
+                }
+            }
+
+            function renderCard() {
+                const deck = currentDeck();
+                const card = deck[currentCard];
+                const cardEl = document.getElementById('flashcard');
+
+                document.getElementById('deckTitleBar').textContent = getDisplayName(deckKey(currentGroupName, currentDeckName));
+
+                let imageHtml = '';
+                if (card.image) {
+                    imageHtml = `<div class="image-wrap"><img src="${card.image}" alt=""></div>`;
+                }
+
+                const textDirection = isRTL(card.question) ? 'rtl' : 'ltr';
+
+                cardEl.innerHTML = `
+                    <div class="card-top-row">
+                        <span class="card-counter">${currentCard + 1} из ${deck.length}</span>
+                        <span class="card-menu-dots">⋮</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="question-text" dir="${textDirection}">${card.question}</p>
+                        ${imageHtml}
+                        <div class="answer-block" id="answerBlock">
+                            <div class="answer-label">Перевод</div>
+                            <div class="answer-text">${card.answer}</div>
+                        </div>
+                    </div>
+                    <div class="reveal-link" onclick="toggleAnswer()">${answerShown ? 'Скрыть ответ' : 'Показать ответ'}</div>
+                `;
+
+                if (answerShown) cardEl.querySelector('#answerBlock').classList.add('show');
+
+                document.getElementById('progress').style.width = (((currentCard + 1) / deck.length) * 100) + '%';
+                renderNavRow();
+            }
+
+            function renderNavRow() {
+                const deck = currentDeck();
+                const arr = getResults();
+                const correct = arr.filter(r => r === true).length;
+                const incorrect = arr.filter(r => r === false).length;
+                const isLast = currentCard === deck.length - 1;
+
+                document.getElementById('navRow').innerHTML = `
+                    <button class="nav-circle nav-prev" onclick="previousCard()" ${currentCard === 0 ? 'style="opacity:0.35;pointer-events:none;"' : ''}>←</button>
+                    <button class="nav-circle nav-wrong" onclick="rate(false)"><span>✕</span><span>${incorrect}</span></button>
+                    <button class="nav-circle nav-right" onclick="rate(true)"><span>✓</span><span>${correct}</span></button>
+                    <button class="nav-circle nav-next" onclick="goNext()">${isLast ? '🏁' : '→'}</button>
+                `;
+            }
+
+            function toggleAnswer() { answerShown = !answerShown; renderCard(); }
+
+            function rate(knewIt) {
+                getResults()[currentCard] = knewIt;
+                renderSidebar();
+                goNext();
+            }
+
+            function goNext() {
+                const deck = currentDeck();
+                if (currentCard < deck.length - 1) {
+                    currentCard++;
+                    answerShown = false;
+                    renderCard();
+                } else {
+                    showResults();
+                }
+            }
+
+            function previousCard() {
+                if (currentCard > 0) {
+                    currentCard--;
+                    answerShown = false;
+                    renderCard();
+                }
+            }
+
+            function showResults() {
+                const deck = currentDeck();
+                const arr = getResults();
+                const correct = arr.filter(r => r === true).length;
+                const incorrect = arr.filter(r => r === false).length;
+                const total = deck.length;
+                const correctPct = total > 0 ? Math.round((correct / total) * 100) : 0;
+                const incorrectPct = total > 0 ? Math.round((incorrect / total) * 100) : 0;
+
+                const listHtml = deck.map((card, idx) => {
+                    const icon = arr[idx] === true ? '✅' : (arr[idx] === false ? '❌' : '⏭️');
+                    return `<div class="results-list-item">${icon} <span>${card.question}</span></div>`;
+                }).join('');
+
+                document.getElementById('flashcard').innerHTML = `
+                    <div style="padding-top: 10px;">
+                        <div class="results-title">🎉 Колода «${getDisplayName(deckKey(currentGroupName, currentDeckName))}» пройдена!</div>
+                        <div class="results-summary">
+                            <div class="results-stat correct"><div class="results-stat-number">${correct}</div><div class="results-stat-label">✓ Знал</div></div>
+                            <div class="results-stat incorrect"><div class="results-stat-number">${incorrect}</div><div class="results-stat-label">✕ Не знал</div></div>
+                        </div>
+                        <div class="chart-bar-row">
+                            <div class="chart-bar-label">Знал</div>
+                            <div class="chart-bar-track"><div class="chart-bar-fill correct" style="width: ${Math.max(correctPct, correct > 0 ? 8 : 0)}%">${correct > 0 ? correctPct + '%' : ''}</div></div>
+                        </div>
+                        <div class="chart-bar-row">
+                            <div class="chart-bar-label">Не знал</div>
+                            <div class="chart-bar-track"><div class="chart-bar-fill incorrect" style="width: ${Math.max(incorrectPct, incorrect > 0 ? 8 : 0)}%">${incorrect > 0 ? incorrectPct + '%' : ''}</div></div>
+                        </div>
+                        <div class="results-list">${listHtml}</div>
+                        <button class="reset-btn" onclick="resetDeck()">🔄 Пройти заново</button>
+                    </div>
+                `;
+
+                document.getElementById('navRow').innerHTML = '';
+                document.getElementById('progress').style.width = '100%';
+                document.getElementById('hint').style.display = 'none';
+            }
+
+            function resetDeck() {
+                currentCard = 0;
+                answerShown = false;
+                deckResults[deckKey(currentGroupName, currentDeckName)] = new Array(currentDeck().length).fill(null);
+                document.getElementById('hint').style.display = 'block';
+                renderSidebar();
+                renderCard();
+            }
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === ' ') { e.preventDefault(); toggleAnswer(); }
+                if (e.key === 'ArrowRight') goNext();
+                if (e.key === 'ArrowLeft') previousCard();
+                if (e.key === 'y' || e.key === 'Y') rate(true);
+                if (e.key === 'n' || e.key === 'N') rate(false);
+            });
+
+            // ── Инициализация ──
+            groupNames.forEach(group => {
+                Object.keys(ALL_DECKS[group]).forEach(deck => {
+                    deckResults[deckKey(group, deck)] = new Array(ALL_DECKS[group][deck].length).fill(null);
+                });
+            });
+
+            if (groupNames.length > 0) {
+                currentGroupName = groupNames[0];
+                currentDeckName = Object.keys(ALL_DECKS[currentGroupName])[0];
+                expandedGroups.add(currentGroupName);
+                renderSidebar();
+                renderCard();
+            } else {
+                document.getElementById('flashcard').innerHTML = '<div class="empty-state">Колоды не найдены.<br>Добавьте CSV файлы в decks/ и запустите ноутбук заново.</div>';
+                document.getElementById('hint').style.display = 'none';
+            }
+        </script>
+    </body>
+    </html>
+    

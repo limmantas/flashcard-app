@@ -1,0 +1,2 @@
+window.ALL_DECKS = window.ALL_DECKS || {};
+window.ALL_DECKS["\u0422\u0435\u0441\u0442"] = {"Тестовая колода": [{"question": "Almost every drug of addiction hijacks that dopamine system.", "answer": "Почти каждый вызывающий зависимость препарат захватывает дофаминовую систему.", "image": "images/Тест/Тестовая колода/card_001.jpg"}, {"question": "Dopamine is a key neurotransmitter, a key chemical in the brain.", "answer": "Дофамин — это ключевой нейромедиатор, ключевое химическое вещество в мозге.", "image": "images/Тест/Тестовая колода/card_002.jpg"}]};
