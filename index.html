@@ -79,15 +79,27 @@
 
             /* ── Группы (папки) ── */
             .group-header {
-                display: flex; align-items: center; gap: 8px;
-                padding: 14px 16px; cursor: pointer;
+                display: flex; align-items: center;
+                padding: 0 8px 0 16px;
                 background: #202024; border-bottom: 1px solid var(--divider);
                 font-weight: 700; font-size: 14px;
             }
 
-            .group-header:active { background: #26262c; }
+            .group-header-clickable {
+                display: flex; align-items: center; gap: 8px;
+                flex: 1; min-width: 0; padding: 14px 0; cursor: pointer;
+            }
 
-            .group-toggle-icon { color: var(--text-secondary); font-size: 11px; width: 12px; }
+            .group-header-clickable:active { opacity: 0.7; }
+
+            .group-rename-btn {
+                background: none; border: none; color: var(--text-secondary);
+                font-size: 14px; padding: 8px; cursor: pointer; flex-shrink: 0; border-radius: 6px;
+            }
+
+            .group-rename-btn:active { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+
+            .group-toggle-icon { color: var(--text-secondary); font-size: 11px; width: 12px; flex-shrink: 0; }
 
             .group-count { color: var(--text-secondary); font-weight: 400; font-size: 12px; margin-left: auto; }
 
@@ -151,7 +163,7 @@
 
             .card-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 20px 0; }
 
-            .question-text { font-size: 30px; font-weight: 500; line-height: 1.28; color: var(--text-primary); }
+            .question-text { font-size: 24px; font-weight: 500; line-height: 1.28; color: var(--text-primary); }
 
             .image-wrap { text-align: center; margin: 18px 0 6px; }
             .image-wrap img { max-width: 100%; max-height: 220px; border-radius: 16px; }
@@ -164,7 +176,7 @@
             .answer-block.show { max-height: 400px; opacity: 1; }
 
             .answer-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 8px; }
-            .answer-text { font-size: 22px; font-weight: 400; color: var(--text-primary); line-height: 1.4; }
+            .answer-text { font-size: 18px; font-weight: 400; color: var(--text-primary); line-height: 1.4; }
 
             .reveal-link { text-align: center; color: var(--text-secondary); font-size: 16px; padding: 16px 0 14px; cursor: pointer; user-select: none; }
             .reveal-link:active { opacity: 0.6; }
@@ -226,8 +238,8 @@
 
             @media (max-width: 420px) {
                 .card { padding: 18px 16px 6px; min-height: 340px; }
-                .question-text { font-size: 24px; }
-                .answer-text { font-size: 18px; }
+                .question-text { font-size: 19px; }
+                .answer-text { font-size: 14px; }
                 .nav-row { gap: 10px; }
                 .nav-circle { width: 52px; height: 52px; font-size: 19px; }
                 .nav-circle.nav-wrong, .nav-circle.nav-right { min-width: 58px; padding: 0 12px; font-size: 16px; }
@@ -235,7 +247,7 @@
         </style>
     </head>
     <body>
-        <script src="data/Общее.js"></script>
+        <script src="data/Тест.js"></script>
 
         <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
         <div class="sidebar" id="sidebar">
@@ -320,6 +332,37 @@
                 renderSidebar();
             }
 
+            // ── Переименование ГРУПП (папок/разделов, например "Общее") ──
+            const GROUP_NAMES_STORAGE_KEY = 'flashcard_group_display_names_v1';
+
+            function loadGroupDisplayNames() {
+                try {
+                    const raw = localStorage.getItem(GROUP_NAMES_STORAGE_KEY);
+                    return raw ? JSON.parse(raw) : {};
+                } catch (e) { return {}; }
+            }
+
+            function saveGroupDisplayNames(obj) {
+                try { localStorage.setItem(GROUP_NAMES_STORAGE_KEY, JSON.stringify(obj)); } catch (e) {}
+            }
+
+            let groupDisplayNames = loadGroupDisplayNames();
+
+            function getGroupDisplayName(originalName) {
+                return groupDisplayNames[originalName] || originalName;
+            }
+
+            function startRenameGroup(originalName) {
+                const current = getGroupDisplayName(originalName);
+                const newName = prompt('Новое название раздела:', current);
+                if (newName && newName.trim() && newName.trim() !== current) {
+                    groupDisplayNames[originalName] = newName.trim();
+                    saveGroupDisplayNames(groupDisplayNames);
+                    renderSidebar();
+                    if (currentGroupName === originalName) renderCard();
+                }
+            }
+
             function renderSidebar() {
                 const listEl = document.getElementById('deckList');
 
@@ -378,13 +421,18 @@
                     }).join('');
 
                     const safeGroupId = group.replace(/[^a-zA-Z0-9]/g, '_');
+                    const safeGroupForJs = group.replace(/'/g, "\\'");
+                    const groupDisplayName = getGroupDisplayName(group);
 
                     return `
                         <div class="group-section">
-                            <div class="group-header" onclick="toggleGroup('${group.replace(/'/g, "\\'")}')">
-                                <span class="group-toggle-icon">${isExpanded ? '▾' : '▸'}</span>
-                                <span>📁 ${group}</span>
-                                <span class="group-count">${deckNamesInGroup.length} колод</span>
+                            <div class="group-header">
+                                <div class="group-header-clickable" onclick="toggleGroup('${safeGroupForJs}')">
+                                    <span class="group-toggle-icon">${isExpanded ? '▾' : '▸'}</span>
+                                    <span>📁 ${groupDisplayName}</span>
+                                    <span class="group-count">${deckNamesInGroup.length} колод</span>
+                                </div>
+                                <button class="group-rename-btn" onclick="event.stopPropagation(); startRenameGroup('${safeGroupForJs}')">✎</button>
                             </div>
                             <div class="group-decks ${isExpanded ? 'expanded' : ''}" id="group-${safeGroupId}">
                                 ${decksHtml}
@@ -436,7 +484,7 @@
                 const card = deck[currentCard];
                 const cardEl = document.getElementById('flashcard');
 
-                document.getElementById('deckTitleBar').textContent = getDisplayName(deckKey(currentGroupName, currentDeckName));
+                document.getElementById('deckTitleBar').textContent = getGroupDisplayName(currentGroupName) + ' · ' + getDisplayName(deckKey(currentGroupName, currentDeckName));
 
                 let imageHtml = '';
                 if (card.image) {
@@ -458,10 +506,14 @@
                             <div class="answer-text">${card.answer}</div>
                         </div>
                     </div>
-                    <div class="reveal-link" onclick="toggleAnswer()">${answerShown ? 'Скрыть ответ' : 'Показать ответ'}</div>
+                    <div class="reveal-link">${answerShown ? 'Скрыть ответ' : 'Показать ответ'}</div>
                 `;
 
                 if (answerShown) cardEl.querySelector('#answerBlock').classList.add('show');
+
+                // Вся карточка кликабельна — нажатие в любом месте показывает/скрывает ответ
+                // (кроме кнопок навигации снизу — они в отдельном блоке #navRow)
+                cardEl.onclick = toggleAnswer;
 
                 document.getElementById('progress').style.width = (((currentCard + 1) / deck.length) * 100) + '%';
                 renderNavRow();
@@ -512,6 +564,9 @@
             function showResults() {
                 const deck = currentDeck();
                 const arr = getResults();
+
+                // На экране результатов карточка больше не переключает ответ
+                document.getElementById('flashcard').onclick = null;
                 const correct = arr.filter(r => r === true).length;
                 const incorrect = arr.filter(r => r === false).length;
                 const total = deck.length;
