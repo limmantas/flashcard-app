@@ -159,7 +159,23 @@
 
             .card-top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
             .card-counter { font-size: 14px; color: var(--text-secondary); font-weight: 500; }
-            .card-menu-dots { color: var(--text-secondary); font-size: 20px; padding: 4px 8px; }
+            .speak-btn {
+                background: rgba(77, 157, 255, 0.15);
+                border: none;
+                color: var(--accent-blue);
+                font-size: 17px;
+                width: 34px;
+                height: 34px;
+                border-radius: 50%;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+            }
+
+            .speak-btn:active { background: rgba(77, 157, 255, 0.3); }
+            .speak-btn.speaking { background: rgba(77, 157, 255, 0.4); }
 
             .card-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 20px 0; }
 
@@ -291,6 +307,41 @@
             function isRTL(text) {
                 const rtlChars = /[\u0591-\u07FF\uFB1D-\uFDFD\uFE70-\uFEFC]/;
                 return rtlChars.test(text);
+            }
+
+            // ── Озвучка текста (встроенный синтез речи браузера, бесплатно, офлайн) ──
+            function detectSpeechLang(text) {
+                if (/[\u0600-\u06FF]/.test(text)) return 'ar-SA';   // арабский
+                if (/[\u0400-\u04FF]/.test(text)) return 'ru-RU';   // русский
+                if (/[\u4e00-\u9fff]/.test(text)) return 'zh-CN';   // китайский
+                if (/[\u3040-\u30ff]/.test(text)) return 'ja-JP';   // японский
+                if (/[\u0E00-\u0E7F]/.test(text)) return 'th-TH';   // тайский
+                return 'en-US';                                        // латиница по умолчанию
+            }
+
+            function speakText(text) {
+                if (!('speechSynthesis' in window)) {
+                    alert('Озвучка не поддерживается в этом браузере');
+                    return;
+                }
+                window.speechSynthesis.cancel(); // прерываем предыдущую озвучку, если была
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = detectSpeechLang(text);
+                utterance.rate = 0.9; // чуть медленнее обычного — удобнее для изучения языка
+
+                const btn = document.getElementById('speakBtn');
+                if (btn) {
+                    utterance.onstart = () => btn.classList.add('speaking');
+                    utterance.onend = () => btn.classList.remove('speaking');
+                    utterance.onerror = () => btn.classList.remove('speaking');
+                }
+
+                window.speechSynthesis.speak(utterance);
+            }
+
+            function speakCurrentCard() {
+                const card = currentDeck()[currentCard];
+                speakText(card.question);
             }
 
             function currentDeck() {
@@ -480,6 +531,8 @@
             }
 
             function renderCard() {
+                if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+
                 const deck = currentDeck();
                 const card = deck[currentCard];
                 const cardEl = document.getElementById('flashcard');
@@ -496,7 +549,7 @@
                 cardEl.innerHTML = `
                     <div class="card-top-row">
                         <span class="card-counter">${currentCard + 1} из ${deck.length}</span>
-                        <span class="card-menu-dots">⋮</span>
+                        <button class="speak-btn" id="speakBtn" onclick="event.stopPropagation(); speakCurrentCard()">🔊</button>
                     </div>
                     <div class="card-body">
                         <p class="question-text" dir="${textDirection}">${card.question}</p>
