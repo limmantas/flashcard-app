@@ -284,7 +284,7 @@
             <div class="card" id="flashcard"></div>
             <div class="nav-row" id="navRow"></div>
             <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
-            <div class="keyboard-hint" id="hint">⌨️ Стрелки — навигация · SPACE — ответ · Y/N — оценка</div>
+            <div class="keyboard-hint" id="hint">⌨️ Стрелки — навигация · SPACE — ответ · Y/N — оценка · ESC — озвучить</div>
         </div>
 
         <script>
@@ -671,6 +671,7 @@
                 if (e.key === 'ArrowLeft') previousCard();
                 if (e.key === 'y' || e.key === 'Y') rate(true);
                 if (e.key === 'n' || e.key === 'N') rate(false);
+                if (e.key === 'Escape') { e.preventDefault(); speakCurrentCard(); }
             });
 
             // ── Инициализация ──
