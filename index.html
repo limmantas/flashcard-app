@@ -177,6 +177,74 @@
             .speak-btn:active { background: rgba(77, 157, 255, 0.3); }
             .speak-btn.speaking { background: rgba(77, 157, 255, 0.4); }
 
+            .mode-toggle-btn {
+                background: rgba(154, 154, 162, 0.15);
+                border: none;
+                color: var(--text-secondary);
+                font-size: 15px;
+                width: 34px;
+                height: 34px;
+                border-radius: 50%;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+            }
+
+            .mode-toggle-btn:active { background: rgba(154, 154, 162, 0.3); }
+
+            /* ── Модальное окно выбора режима (с картинками / без) ── */
+            .mode-modal-overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.6);
+                z-index: 200;
+                display: none;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .mode-modal-overlay.open { display: flex; }
+
+            .mode-modal {
+                background: var(--card-bg);
+                border-radius: 20px;
+                padding: 28px 24px;
+                max-width: 320px;
+                width: 85%;
+                text-align: center;
+            }
+
+            .mode-modal-title {
+                font-size: 17px;
+                font-weight: 700;
+                color: var(--text-primary);
+                margin-bottom: 20px;
+            }
+
+            .mode-modal-buttons {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .mode-modal-btn {
+                background: var(--accent-blue);
+                color: #0c0c0e;
+                border: none;
+                padding: 14px;
+                border-radius: 14px;
+                font-size: 15px;
+                font-weight: 700;
+                cursor: pointer;
+            }
+
+            .mode-modal-btn.secondary {
+                background: #38383e;
+                color: var(--text-primary);
+            }
+
             .card-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 20px 0; }
 
             .question-text { font-size: 24px; font-weight: 500; line-height: 1.28; color: var(--text-primary); }
@@ -266,6 +334,16 @@
         <script src="data/Общее.js"></script>
 
         <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+        <div class="mode-modal-overlay" id="modeModalOverlay">
+            <div class="mode-modal">
+                <div class="mode-modal-title">Как показывать карточки?</div>
+                <div class="mode-modal-buttons">
+                    <button class="mode-modal-btn" onclick="startDeckWithMode(true)">🖼️ С картинками</button>
+                    <button class="mode-modal-btn secondary" onclick="startDeckWithMode(false)">🚫 Без картинок</button>
+                </div>
+            </div>
+        </div>
         <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <span>📚 Мои колоды</span>
@@ -297,6 +375,8 @@
             let answerShown = false;
             let deckResults = {};
             let expandedGroups = new Set();
+            let showImages = true;   // текущий режим: с картинками / без
+            let pendingDeck = null;  // колода, ожидающая выбора режима в модальном окне
 
             function deckKey(group, deck) { return group + '::' + deck; }
 
@@ -504,6 +584,19 @@
             }
 
             function selectDeck(group, deck) {
+                // Перед открытием колоды спрашиваем режим (с картинками / без)
+                pendingDeck = { group, deck };
+                closeSidebar();
+                document.getElementById('modeModalOverlay').classList.add('open');
+            }
+
+            function startDeckWithMode(withImages) {
+                showImages = withImages;
+                document.getElementById('modeModalOverlay').classList.remove('open');
+
+                const { group, deck } = pendingDeck;
+                pendingDeck = null;
+
                 currentGroupName = group;
                 currentDeckName = deck;
                 expandedGroups.add(group);
@@ -517,7 +610,6 @@
                 const firstUnanswered = arr.findIndex(r => r === null);
 
                 answerShown = false;
-                closeSidebar();
                 renderSidebar();
 
                 if (firstUnanswered === -1 && arr.length > 0) {
@@ -530,6 +622,11 @@
                 }
             }
 
+            function toggleImagesMode() {
+                showImages = !showImages;
+                renderCard();
+            }
+
             function renderCard() {
                 if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 
@@ -540,7 +637,7 @@
                 document.getElementById('deckTitleBar').textContent = getGroupDisplayName(currentGroupName) + ' · ' + getDisplayName(deckKey(currentGroupName, currentDeckName));
 
                 let imageHtml = '';
-                if (card.image) {
+                if (showImages && card.image) {
                     imageHtml = `<div class="image-wrap"><img src="${card.image}" alt=""></div>`;
                 }
 
@@ -549,7 +646,10 @@
                 cardEl.innerHTML = `
                     <div class="card-top-row">
                         <span class="card-counter">${currentCard + 1} из ${deck.length}</span>
-                        <button class="speak-btn" id="speakBtn" onclick="event.stopPropagation(); speakCurrentCard()">🔊</button>
+                        <div style="display:flex;gap:6px;">
+                            <button class="mode-toggle-btn" onclick="event.stopPropagation(); toggleImagesMode()" title="Переключить картинки">${showImages ? '🖼️' : '🚫'}</button>
+                            <button class="speak-btn" id="speakBtn" onclick="event.stopPropagation(); speakCurrentCard()">🔊</button>
+                        </div>
                     </div>
                     <div class="card-body">
                         <p class="question-text" dir="${textDirection}">${card.question}</p>
